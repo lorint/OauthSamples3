@@ -3,5 +3,11 @@
 <%= link_to "Log in using Facebook", "https://www.facebook.com/dialog/oauth?client_id=#{ENV["FB_CLIENT_ID"]}&redirect_uri=http://localhost:3000/social_media/facebook&scope=public_profile,email,user_friends" %>
 
 <% if current_user %>
-  Your FB info: <%= fb_info = current_user.social_media.find {|sm| sm.fb_id != nil }.inspect %>
+  Your FB info: <%= current_user.social_media.find {|sm| sm.fb_id != nil }.inspect %>
+<% end %>
+<hr>
+
+<%= link_to "Log in using Google", "https://accounts.google.com/o/oauth2/auth?access_type=offline&approval_prompt=force&client_id=#{ENV["GOOGLE_CLIENT_ID"]}&include_granted_scopes=true&redirect_uri=http://localhost:3000/social_media/google&response_type=code&scope=https://www.googleapis.com/auth/calendar.readonly+https://www.googleapis.com/auth/userinfo.profile" %>
+<% if current_user %>
+  Your Google info: <%= current_user.social_media.find {|sm| sm.google_id != nil }.inspect %>
 <% end %>

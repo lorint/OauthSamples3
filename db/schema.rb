@@ -22,6 +22,7 @@ ActiveRecord::Schema.define(version: 20161031105429) do
     t.string   "tw_id"
     t.string   "pn_id"
     t.string   "li_id"
+    t.string   "google_id"
     t.string   "acc"
     t.string   "secret"
     t.string   "context"

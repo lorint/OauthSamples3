@@ -8,6 +8,7 @@ class CreateSocialMedia < ActiveRecord::Migration[5.0]
       t.string :tw_id # Twitter
       t.string :pn_id # Pinterest
       t.string :li_id # LinkedIn
+      t.string :google_id # Google
 
       t.string :acc # Access Token
       t.string :secret

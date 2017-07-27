@@ -1,12 +1,9 @@
-class SocialMediaController < ApplicationController
-  def facebook
-    # Build out a User if we don't have one yet
-    unless current_user
-      user = User.create
-      # Log in as this new user
-      session[:user_id] = user.id.to_s
-    end
+require 'net/http'
 
+class SocialMediaController < ApplicationController
+  before_action :ensure_current_user
+
+  def facebook
     # Do they already have a facebook social medium?
     fb_social_medium = current_user.social_media.find {|sm| sm.fb_id != nil }
     # Go see if we can still act as them using their access token
@@ -21,7 +18,9 @@ class SocialMediaController < ApplicationController
         '&redirect_uri=http://localhost:3000/social_media/facebook' +
         '&client_secret=' + ENV["FB_CLIENT_SECRET"] +
         "&code=#{params["code"]}"))
-      @access_token = Rack::Utils.parse_nested_query(response)["access_token"]
+      # @access_token = Rack::Utils.parse_nested_query(response)["access_token"]
+
+      @access_token = JSON.parse(response)["access_token"]
 
       current_user.social_media.create({acc: @access_token}.merge(fb_params))
     end
@@ -69,6 +68,55 @@ class SocialMediaController < ApplicationController
   end
 
   def google
+    # Do they already have a Google social medium?
+    google_social_medium = current_user.social_media.find {|sm| sm.google_id != nil }
+    # Go see if we can still act as them using their access token
+    if google_social_medium
+      @access_token = google_social_medium.acc
+      # In case of a name change or whatever, keep our stuff up-to-date
+      google_social_medium.update(google_params)
+    else
+      # Build out the Google social medium
+
+      # Over here we get something like:
+      # {"code"=>"4/aOkrqYZ29OlQZJcvjH8U7ZkvvE_-iGz0F_DTnEvsVzw", "scope"=>"https://www.googleapis.com/auth/calendar.readonly"}
+      response = Net::HTTP.post_form(URI.parse('https://accounts.google.com/o/oauth2/token?'),
+        {client_id: ENV["GOOGLE_CLIENT_ID"],
+        client_secret: ENV["GOOGLE_CLIENT_SECRET"],
+        code: params["code"],
+        grant_type: 'authorization_code',
+        redirect_uri: 'http://localhost:3000/social_media/google'}
+      )
+
+      @access_token = JSON.parse(response.body)["access_token"]
+
+      # TODO: Lorin Work with refresh token (expires in 1 hour)
+      # refresh_token = JSON.parse(response.body)["refresh_token"]
+
+      current_user.social_media.create({acc: @access_token}.merge(google_params))
+    end
+
+    redirect_to home_path
+  end
+
+  # A little later we'll put this as private
+  def google_params
+    unless @google_params
+      google_info = JSON.parse(Net::HTTP.get(URI.parse('https://www.googleapis.com/oauth2/v1/userinfo?alt=json' +
+        '&access_token=' + @access_token)))
+
+      @google_params = {
+        google_id: google_info["id"],
+        first_name: google_info["given_name"], last_name: google_info["family_name"],
+        full_name: google_info["name"],
+        website: google_info["link"],
+
+        gender: google_info["gender"],
+        locale: google_info["locale"] # ISO 3166-1 alpha-2 standard country code
+        # We can also get "picture"
+      }
+    end
+    @google_params
   end
 
   def myspace
@@ -96,5 +144,16 @@ class SocialMediaController < ApplicationController
   end
 
   def apple
+  end
+
+  private
+
+  def ensure_current_user
+    # Build out a User if we don't have one yet
+    unless current_user
+      user = User.create
+      # Log in as this new user
+      session[:user_id] = user.id.to_s
+    end
   end
 end
